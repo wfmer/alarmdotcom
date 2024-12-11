@@ -1,3 +1,4 @@
+
 """Interfaces with Alarm.com alarm control panels."""
 
 from __future__ import annotations
@@ -10,19 +11,11 @@ from typing import Any
 from homeassistant import core
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
-    AlarmControlPanelState,
+    AlarmControlPanelState,  # Fixed import
     AlarmControlPanelEntityFeature,
     CodeFormat,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    AlarmControlPanelState.ARMED_AWAY,
-    AlarmControlPanelState.ARMED_HOME,
-    AlarmControlPanelState.ARMED_NIGHT,
-    AlarmControlPanelState.ARMING,
-    AlarmControlPanelState.DISARMED,
-    AlarmControlPanelState.DISARMING,
-)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, DiscoveryInfoType
 from pyalarmdotcomajax.devices.partition import Partition as libPartition
 from pyalarmdotcomajax.exceptions import NotAuthorized
@@ -81,7 +74,7 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
         self._attr_code_format = (
             (
                 CodeFormat.NUMBER
-                if (isinstance(arm_code, str) and re.search("^\\d+$", arm_code))
+                if (isinstance(arm_code, str) and re.search("^\d+$", arm_code))
                 else CodeFormat.TEXT
             )
             if (arm_code := controller.options.get(CONF_ARM_CODE))
@@ -103,6 +96,7 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
             "uncleared_issues": str(self._device.uncleared_issues),
             **getattr(super(), "extra_state_attributes", {}),
         }
+
     @property
     def alarm_state(self) -> AlarmControlPanelState:
         """Return the current state of the alarm using AlarmControlPanelState enum."""
@@ -140,38 +134,6 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
     def state(self) -> AlarmControlPanelState:
         """Return the state property via alarm_state."""
         return self.alarm_state
-        """Return the state of the device."""
-
-        if self._device.malfunction:
-            return None
-
-        if self._device.state == self._device.desired_state:
-            match self._device.state:
-                case libPartition.DeviceState.DISARMED:
-                    return str(STATE_ALARM_DISARMED)
-                case libPartition.DeviceState.ARMED_STAY:
-                    return str(STATE_ALARM_ARMED_HOME)
-                case libPartition.DeviceState.ARMED_AWAY:
-                    return str(STATE_ALARM_ARMED_AWAY)
-                case libPartition.DeviceState.ARMED_NIGHT:
-                    return str(STATE_ALARM_ARMED_NIGHT)
-        else:
-            match self._device.desired_state:
-                case libPartition.DeviceState.DISARMED:
-                    return str(STATE_ALARM_DISARMING)
-                case (
-                    libPartition.DeviceState.ARMED_STAY
-                    | libPartition.DeviceState.ARMED_AWAY
-                    | libPartition.DeviceState.ARMED_NIGHT
-                ):
-                    return str(STATE_ALARM_ARMING)
-
-        LOGGER.error(
-            f"Cannot determine state. Found raw state of {self._device.state} and desired state of"
-            f" {self._device.desired_state}."
-        )
-
-        return None
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
@@ -225,10 +187,6 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
                 )
             except NotAuthorized:
                 self._show_permission_error("arm_away")
-
-    #
-    # Helpers
-    #
 
     def _validate_code(self, code: str | None) -> bool | str:
         """Validate given code."""
