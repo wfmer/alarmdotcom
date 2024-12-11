@@ -74,7 +74,7 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
         self._attr_code_format = (
             (
                 CodeFormat.NUMBER
-                if (isinstance(arm_code, str) and re.search("^\d+$", arm_code))
+                if (isinstance(arm_code, str) and re.search(r"^\d+$", arm_code))
                 else CodeFormat.TEXT
             )
             if (arm_code := controller.options.get(CONF_ARM_CODE))
@@ -132,16 +132,22 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
 
     @property
     def state(self) -> AlarmControlPanelState:
-        """Return the state property via alarm_state."""
+        """Return the state of the alarm using the AlarmControlPanelState enum."""
         return self.alarm_state
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
         if self._validate_code(code):
             try:
+                if self._controller._websession.closed:
+                    LOGGER.error("Session is closed. Cannot perform disarm operation.")
+                    raise RuntimeError("Cannot disarm: Session is closed")
+
                 await self._device.async_disarm()
             except NotAuthorized:
                 self._show_permission_error("disarm")
+            except RuntimeError as err:
+                LOGGER.error(f"Disarm operation failed: {err}")
 
     async def async_alarm_arm_night(self, code: str | None = None) -> None:
         """Send arm night command."""
@@ -150,6 +156,10 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
 
         if self._validate_code(code):
             try:
+                if self._controller._websession.closed:
+                    LOGGER.error("Session is closed. Cannot perform arm night operation.")
+                    raise RuntimeError("Cannot arm night: Session is closed")
+
                 await self._device.async_arm_night(
                     force_bypass=CONF_FORCE_BYPASS in arm_options,
                     no_entry_delay=CONF_NO_ENTRY_DELAY in arm_options,
@@ -157,6 +167,8 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
                 )
             except NotAuthorized:
                 self._show_permission_error("arm_night")
+            except RuntimeError as err:
+                LOGGER.error(f"Arm night operation failed: {err}")
 
     async def async_alarm_arm_home(self, code: str | None = None) -> None:
         """Send arm home command."""
@@ -165,6 +177,10 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
 
         if self._validate_code(code):
             try:
+                if self._controller._websession.closed:
+                    LOGGER.error("Session is closed. Cannot perform arm home operation.")
+                    raise RuntimeError("Cannot arm home: Session is closed")
+
                 await self._device.async_arm_stay(
                     force_bypass=CONF_FORCE_BYPASS in arm_options,
                     no_entry_delay=CONF_NO_ENTRY_DELAY in arm_options,
@@ -172,6 +188,8 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
                 )
             except NotAuthorized:
                 self._show_permission_error("arm_home")
+            except RuntimeError as err:
+                LOGGER.error(f"Arm home operation failed: {err}")
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
         """Send arm away command."""
@@ -180,6 +198,10 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
 
         if self._validate_code(code):
             try:
+                if self._controller._websession.closed:
+                    LOGGER.error("Session is closed. Cannot perform arm away operation.")
+                    raise RuntimeError("Cannot arm away: Session is closed")
+
                 await self._device.async_arm_away(
                     force_bypass=CONF_FORCE_BYPASS in arm_options,
                     no_entry_delay=CONF_NO_ENTRY_DELAY in arm_options,
@@ -187,6 +209,8 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
                 )
             except NotAuthorized:
                 self._show_permission_error("arm_away")
+            except RuntimeError as err:
+                LOGGER.error(f"Arm away operation failed: {err}")
 
     def _validate_code(self, code: str | None) -> bool | str:
         """Validate given code."""
