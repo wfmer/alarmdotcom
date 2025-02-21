@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+import logging  # Add this import
 import re
 from collections.abc import Mapping
 from typing import Any
@@ -10,18 +10,12 @@ from typing import Any
 from homeassistant import core
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
+    AlarmControlPanelState,
     AlarmControlPanelEntityFeature,
     CodeFormat,
 )
+from homeassistant.components.alarm_control_panel.const import AlarmControlPanelState
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    STATE_ALARM_ARMED_AWAY,
-    STATE_ALARM_ARMED_HOME,
-    STATE_ALARM_ARMED_NIGHT,
-    STATE_ALARM_ARMING,
-    STATE_ALARM_DISARMED,
-    STATE_ALARM_DISARMING,
-)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, DiscoveryInfoType
 from pyalarmdotcomajax.devices.partition import Partition as libPartition
 from pyalarmdotcomajax.exceptions import NotAuthorized
@@ -40,8 +34,7 @@ from .const import (
 )
 from .controller import AlarmIntegrationController
 
-LOGGER = logging.getLogger(__name__)
-
+LOGGER = logging.getLogger(__name__)  # This will now work
 
 async def async_setup_entry(
     hass: core.HomeAssistant,
@@ -80,7 +73,7 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
         self._attr_code_format = (
             (
                 CodeFormat.NUMBER
-                if (isinstance(arm_code, str) and re.search("^\\d+$", arm_code))
+                if (isinstance(arm_code, str) and re.search(r"^\d+$", arm_code))
                 else CodeFormat.TEXT
             )
             if (arm_code := controller.options.get(CONF_ARM_CODE))
@@ -104,39 +97,37 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
         }
 
     @property
-    def state(self) -> str | None:
-        """Return the state of the device."""
-
+    def alarm_state(self) -> AlarmControlPanelState:
+        """Return the current state of the alarm using AlarmControlPanelState enum."""
         if self._device.malfunction:
-            return None
-
+            return AlarmControlPanelState.UNKNOWN
+        
         if self._device.state == self._device.desired_state:
             match self._device.state:
                 case libPartition.DeviceState.DISARMED:
-                    return str(STATE_ALARM_DISARMED)
+                    return AlarmControlPanelState.DISARMED
                 case libPartition.DeviceState.ARMED_STAY:
-                    return str(STATE_ALARM_ARMED_HOME)
+                    return AlarmControlPanelState.ARMED_HOME
                 case libPartition.DeviceState.ARMED_AWAY:
-                    return str(STATE_ALARM_ARMED_AWAY)
+                    return AlarmControlPanelState.ARMED_AWAY
                 case libPartition.DeviceState.ARMED_NIGHT:
-                    return str(STATE_ALARM_ARMED_NIGHT)
+                    return AlarmControlPanelState.ARMED_NIGHT
         else:
             match self._device.desired_state:
                 case libPartition.DeviceState.DISARMED:
-                    return str(STATE_ALARM_DISARMING)
+                    return AlarmControlPanelState.DISARMING
                 case (
                     libPartition.DeviceState.ARMED_STAY
                     | libPartition.DeviceState.ARMED_AWAY
                     | libPartition.DeviceState.ARMED_NIGHT
                 ):
-                    return str(STATE_ALARM_ARMING)
-
+                    return AlarmControlPanelState.ARMING
+        
         LOGGER.error(
             f"Cannot determine state. Found raw state of {self._device.state} and desired state of"
             f" {self._device.desired_state}."
         )
-
-        return None
+        return AlarmControlPanelState.UNKNOWN
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
@@ -190,10 +181,6 @@ class AlarmControlPanel(HardwareBaseDevice, AlarmControlPanelEntity):  # type: i
                 )
             except NotAuthorized:
                 self._show_permission_error("arm_away")
-
-    #
-    # Helpers
-    #
 
     def _validate_code(self, code: str | None) -> bool | str:
         """Validate given code."""
