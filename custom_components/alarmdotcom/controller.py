@@ -153,7 +153,16 @@ class AlarmIntegrationController:
         Using now as a dummy to prevent errors.
         """
 
-        return await self.api.keep_alive()  # type: ignore
+        try:
+            # Check if the session is closed
+            if self.api._websession.closed:  # pylint: disable=protected-access
+                LOGGER.warning("Session was closed. Recreating session...")
+                self.api._websession = async_create_clientsession(self.hass)  # pylint: disable=protected-access
+
+            # Perform the keep-alive action
+            await self.api.keep_alive()
+        except Exception as err:  # pylint: disable=broad-except
+            LOGGER.error("Failed to keep session alive: %s", err)
 
     async def async_update(self) -> None:
         """Pull fresh data from Alarm.com for coordinator."""
