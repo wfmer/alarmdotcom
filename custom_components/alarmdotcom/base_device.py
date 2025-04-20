@@ -44,21 +44,21 @@ class BaseDevice(CoordinatorEntity):  # type: ignore
         super().__init__(controller.update_coordinator)
 
         self._adc_id: Final[str] = device.id_
-
         self._device = device
-
         self._controller = controller
 
         self._attr_extra_state_attributes: MutableMapping[str, Any] = {}
 
-        self._attr_device_info = DeviceInfo(
-            {
-                "manufacturer": "Alarm.com",
-                "name": device.name,
-                "identifiers": {(DOMAIN, self._adc_id)},
-                "via_device": (DOMAIN, self._device.partition_id),
-            }
-        )
+        device_info_data = {
+        "manufacturer": "Alarm.com",
+        "name": device.name,
+        "identifiers": {(DOMAIN, self._adc_id)},
+    }
+
+    if getattr(device, "partition_id", None):
+        device_info_data["via_device"] = (DOMAIN, device.partition_id)
+
+    self._attr_device_info = DeviceInfo(device_info_data)
 
     @property
     def device_type_name(self) -> str:
@@ -94,6 +94,8 @@ class BaseDevice(CoordinatorEntity):  # type: ignore
 
     def _update_device_data(self) -> None:
         """Device-type specific update processes to run when new device data is available."""
+
+        previous_state = self.state  # or self._state if that's what stores the last state
 
         self._device = self._controller.api.devices.get(self._adc_id)
 
