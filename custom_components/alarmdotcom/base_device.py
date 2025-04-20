@@ -28,7 +28,6 @@ from .controller import AlarmIntegrationController
 
 LOGGER = logging.getLogger(__name__)
 
-
 class BaseDevice(CoordinatorEntity):  # type: ignore
     """Base class for ADC entities."""
 
@@ -49,16 +48,18 @@ class BaseDevice(CoordinatorEntity):  # type: ignore
 
         self._attr_extra_state_attributes: MutableMapping[str, Any] = {}
 
+        # Conditional assignment of via_device only if partition_id exists
         device_info_data = {
-        "manufacturer": "Alarm.com",
-        "name": device.name,
-        "identifiers": {(DOMAIN, self._adc_id)},
-    }
+            "manufacturer": "Alarm.com",
+            "name": device.name,
+            "identifiers": {(DOMAIN, self._adc_id)},
+        }
 
-    if getattr(device, "partition_id", None):
-        device_info_data["via_device"] = (DOMAIN, device.partition_id)
+        # Add via_device only if it's valid
+        if getattr(device, "partition_id", None):
+            device_info_data["via_device"] = (DOMAIN, device.partition_id)
 
-    self._attr_device_info = DeviceInfo(device_info_data)
+        self._attr_device_info = DeviceInfo(device_info_data)
 
     @property
     def device_type_name(self) -> str:
