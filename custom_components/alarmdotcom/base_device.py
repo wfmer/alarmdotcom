@@ -106,7 +106,12 @@ class BaseDevice(CoordinatorEntity):  # type: ignore
 
         # LOGGER.debug("************** START DEVICE UPDATE *****************")
         LOGGER.info(
-            f"Updated {self.device_type_name} {self._friendly_name_internal()} ({self._adc_id}): {self.state}"
+            "%s: %s (%s) updated. State: %s -> %s",
+            self.device_type_name,
+            self._device.name,
+            self._adc_id,
+            previous_state,
+            self.state,
         )
         # LOGGER.debug(json.dumps(self._device.raw_attributes, indent=4, sort_keys=True))
         # LOGGER.debug("************** END DEVICE UPDATE *****************")
